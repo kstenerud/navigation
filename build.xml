@@ -1,0 +1,182 @@
+<?xml version="1.0"?>
+
+<project default="make"                    name="navigation">
+  <!-- Project Values -->
+  <property name="project.title"           value="Navigation"/>
+  <property name="project.package"         value="org.stenerud.navigation"/>
+  <property name="project.version"         value="1.2"/>
+
+  <!-- Javac Properties -->
+  <property name="javac.debug"             value="true"/>
+  <property name="javac.optimize"          value="false"/>
+
+  <!-- Directories -->
+  <property name="dir.src"                 location="src"/>
+  <property name="dir.work"                location="work"/>
+  <property name="dir.class"               location="${dir.work}/class"/>
+  <property name="dir.lib"                 location="lib"/>
+  <property name="dir.doc"                 location="doc"/>
+  <property name="dir.dist"                location="dist"/>
+  <property name="dir.dist.lib"            location="${dir.dist}/lib"/>
+  <property name="dir.dist.doc"            location="${dir.dist}/doc"/>
+  <property name="dir.dist.javadoc"        location="${dir.dist.doc}/api"/>
+
+  <!-- Test Directories -->
+  <property name="dir.test"                location="test"/>
+  <property name="dir.test.src"            location="${dir.test}/src"/>
+  <property name="dir.test.work"           location="${dir.test}/work"/>
+  <property name="dir.test.class"          location="${dir.test.work}/class"/>
+  <property name="dir.test.lib"            location="${dir.test}/lib"/>
+
+  <!-- Misc -->
+  <property name="test.suite"              value="${project.package}.${project.title}TestSuite"/>
+  <property name="test.runner"             value="junit.textui.TestRunner"/>
+  <property name="project.jar"             value="${dir.dist.lib}/${ant.project.name}-${project.version}.jar"/>
+
+
+
+
+  <!-- =================================================================== -->
+  <!-- Classpaths                                                          -->
+  <!-- =================================================================== -->
+  <path id="classpath.default">
+    <fileset dir="${dir.lib}" >
+      <include name="**/*.jar"/>
+    </fileset>
+  </path>
+
+  <path id="classpath.test">
+    <fileset dir="${dir.dist.lib}" >
+      <include name="**/*.jar"/>
+    </fileset>
+    <fileset dir="${dir.test.lib}" >
+      <include name="**/*.jar"/>
+    </fileset>
+    <pathelement location="${dir.test.class}"/>
+  </path>
+
+
+  <!-- =================================================================== -->
+  <!-- Build                                                               -->
+  <!-- =================================================================== -->
+  <target name="make" depends="compile,jarfile,copy" description="Build the project (default)"/>
+
+
+
+  <!-- =================================================================== -->
+  <!-- Rebuild                                                             -->
+  <!-- =================================================================== -->
+  <target name="rebuild" depends="clean,make" description="Clean, then rebuild the project"/>
+
+
+
+  <!-- =================================================================== -->
+  <!-- Clean everything                                                    -->
+  <!-- =================================================================== -->
+  <target name="clean" description="Clean out all compiled/generated files">
+    <delete dir="${dir.work}"/>
+    <delete dir="${dir.dist}"/>
+    <delete dir="${dir.test.work}"/>
+    <delete file="${project.jar}"/>
+  </target>
+
+
+
+  <!-- =================================================================== -->
+  <!-- Compile java                                                        -->
+  <!-- =================================================================== -->
+  <target name="compile" description="Compile java">
+  	<mkdir dir="${dir.class}"/>
+    <javac
+     destdir="${dir.class}"
+     classpathref="classpath.default"
+     verbose="false"
+     debug="${javac.debug}"
+     optimize="${javac.optimize}">
+      <src>
+        <pathelement location="${dir.src}"/>
+      </src>
+    </javac>
+  </target>
+
+
+
+  <!-- =================================================================== -->
+  <!-- Create jar                                                          -->
+  <!-- =================================================================== -->
+  <target name="jarfile" depends="compile,copy" description="Create jarfile">
+  	<mkdir dir="${dir.dist.lib}"/>
+    <jar jarfile="${project.jar}">
+      <fileset dir="${dir.class}" excludes="**/*.java"/>
+      <fileset dir="${dir.src}" excludes="**/*.java"/>
+    </jar>
+  </target>
+
+
+
+  <!-- =================================================================== -->
+  <!-- Copy files                                                          -->
+  <!-- =================================================================== -->
+  <target name="copy" description="Copy any other related files to dist">
+  	<mkdir dir="${dir.dist.doc}"/>
+    <copy todir="${dir.dist.doc}">
+      <fileset dir="${dir.doc}"/>
+    </copy>
+    <copy todir="${dir.class}">
+      <fileset dir="${dir.src}" includes="**/*.properties"/>
+    </copy>
+    <copy todir="${dir.dist.lib}">
+      <fileset dir="${dir.lib}"/>
+    </copy>
+  </target>
+
+
+
+  <!-- =================================================================== -->
+  <!-- Generate Javadoc                                                    -->
+  <!-- =================================================================== -->
+  <target name="javadoc" description="Generate Javadoc">
+  	<mkdir dir="${dir.dist.javadoc}"/>
+    <javadoc
+      sourcepath="${dir.src}"
+      destdir="${dir.dist.javadoc}"
+      packagenames="${project.package}.*"
+      classpathref="classpath.default"
+      defaultexcludes="true"
+    />
+  </target>
+
+
+  <target name="compile-test" depends="compile,copy">
+  	<mkdir dir="${dir.test.class}"/>
+    <javac
+     destdir="${dir.test.class}"
+     classpathref="classpath.test"
+     verbose="false"
+     debug="${javac.debug}"
+     optimize="${javac.optimize}">
+      <src>
+        <pathelement location="${dir.test.src}"/>
+      </src>
+    </javac>
+  </target>
+
+
+  <target name="copy-test" description="Copy test files over">
+    <copy todir="${dir.test.class}">
+      <fileset dir="${dir.test.src}" includes="**/*.properties"/>
+    </copy>
+  </target>
+
+  <target name="test" depends="make,compile-test,copy-test" description="Run tests">
+    <java classname="${test.runner}" fork="yes" dir="${dir.test}" failonerror="true">
+      <arg value="${test.suite}"/>
+      <classpath>
+        <path refid="classpath.test"/>
+      </classpath>
+    </java>
+  </target>
+
+  <target name="complete" depends="rebuild,javadoc,test" description="Rebuild, create javadocs, test"/>
+
+</project>

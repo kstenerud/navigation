@@ -1,0 +1,200 @@
+<html>
+  <head>
+    <title>Navigation</title>
+    <link href="style.css" rel="stylesheet" type="text/css"/>
+  </head>
+  <body>
+    <h1>Navigation</h1>
+
+
+    <h2>What it is</h2>
+
+    Navigation implements a design pattern that allows you to navigate through complex systems by means of "navigation chains".
+    <br>
+    Each node in the navigation chain is represented as its own object, and can have any number of child links attached to it (done through upwards linking; navigations have no knowledge of their children).
+    <br>
+    This means that you can create a navigation chain to a common point in your system, and then attach multiple subchains at that point.
+    <br>
+    The navigation to that point will only be resolved once;  subchains will use the already-resolved context and work from there.
+
+
+    <h2>Proof of Concept</h2>
+
+    The Html navigations are included as a proof of concept, and sit on top of <a href="http://htmlunit.sourceforge.net">HtmlUnit</a> to provide an easy mechanism to navigate html documents.
+
+
+    <h2>Html Navigation Concepts</h2>
+
+    I've had to take a few liberties that would otherwise be considered bad design in order to provide an intuitive calling scheme in a typesafe language that has no true multiple inheritance mechanism.
+    <br>
+    First, HtmlNavigation contains a LOT of factory methods for identifying elements by tag name and by attribute name.
+    <br>
+    It is entirely possible to attempt to navigate to a div element by its href attribute for example (the navigation will fail, mind you).
+    <br>
+    This calls for diligence on the part of the developer in choosing which factory methods to chain together.
+    <br>
+    As well, the concept of descriptions, navigations, and actions (see below for an explanation) should really be handled above the html-specific navigations, but I could think of no clean way to implement it in a single-inheritance language without putting an extra burden on navigation developers.
+    <br>
+    <br>
+    Bear in mind that this is a work in progress.  I don't have all the answers on this, so if you have a good idea on how to improve the architecture, please drop me a line.
+
+
+    <h2>HtmlNavigation</h2>
+
+    HtmlNavigation forms the base class of all html navigations.  It provides factory methods for all common element types and attributes, and some others for node collection and indexing.
+    <br>
+    In a loosely typed language, many of these methods would be moved to various subclasses.
+    <br>
+    I decided to trade off ease of development (any new factory methods MUST be placed in HtmlNavigation) for ease of use (intuitive method chaining).
+
+
+    <h2>Navigation Types</h2>
+
+    There are three types of methods available through HtmlNavigation:
+
+
+    <h3>Description</h3>
+    This "navigation" does not actually move you to a new navigation point, but rather provides hints on a temporary context for the next real navigation to use when resolving the next navigation point.
+
+    <h3>Navigation</h3>
+    Navigates from its parent's context point in the system to another point.  Navigations may use temporary context hints provided by previous descriptions when navigating, but they must always clear the temporary context after navigation.
+
+    <h3>Action</h3>
+    This is not really a navigation per-se.  Action methods do not return a navigation object; they are used to test for success, get representations of the current point in other data formats, or alter the state of the system being navigated.
+
+
+    <h2>WebNavigator</h2>
+
+    WebNavigator adapts WebClient, providing you with the ability to mimic a web browser, and providing the initial context for html page navigations.
+    <br>
+    <br>
+    There are two ways to create an initial context with WebNavigator:
+    <ul>
+      <li>
+        gotoUrl(): use this to cause WebNavigator to resolve a url and load the page into its context.  Note that the page MUST be html or it will throw an exception.  I have not put in support for other page types.
+      </li>
+      <li>
+        activate(): Calling this on an activatable node (buttons, links and such) will cause the WebNavigator's page to change.  Note that any previously created navigations will still point to the old page!
+      </li>
+    </ul>
+    <br>
+
+    Once the navigator is on an html page, you can build navigation chains from it.
+    <br>
+    page() builds a navigation that points to the page itself, which is always of type HtmlPage (other page types are not supported - yet).
+    <br>
+    WebNavigator also provides some convenience methods:
+    <ul>
+      <li>html(): navigates to the html tag</li>
+      <li>htmlChildren(): navigates to a list of all children of the html tag</li>
+      <li>head(): navigates to the html tag</li>
+      <li>headChildren(): navigates to a list of all children of the html tag</li>
+      <li>title(): navigates to the title tag</li>
+      <li>body(): navigates to the body tag</li>
+      <li>bodyChildren(): navigates to a list of all children of the body tag</li>
+      <li>frames(): navigates to a list of all of the frames in this page</li>
+    </ul>
+
+    <h2>Example Usage</h2>
+
+    Given the following html page:
+    <pre>
+      &lt;html&gt;
+        &lt;head&gt;
+          &lt;title&gt;This is a title&lt;/title&gt;
+        &lt;/head&gt;
+        &lt;body&gt;
+          &lt;h1&gt;This is a header&lt;/h1&gt;
+          Here is some text
+          &lt;br&gt;
+          Here is an &lt;a id="nextPage" href="page2.html"&gt;anchor&lt;/a&gt;
+          &lt;div id="section1"&gt;
+            &lt;span class="highlighted"&gt;This is a section&lt;/span&gt;
+            &lt;div id="subsectionA"&gt;
+              &lt;h2&gt;This is a subsection&lt;/h2&gt;
+              Some more text in the subsection
+              &lt;br&gt;
+              &lt;a id="randomLink" href="goRandom.html"&gt;Click here to go a random location&lt;/a&gt;
+            &lt;/div&gt;
+            &lt;div id="subsectionB"&gt;
+                Now for an image: &lt;img src="someImage.png" alt="some image"&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/body&gt;
+      &lt;/html&gt;
+    </pre>
+
+    You would set up an initial context like this:
+    <pre>
+      WebNavigator nav = new WebNavigator();
+      nav.gotoUrl(someUrl);
+    </pre>
+
+    Suppose you wanted to click the anchor that claims to take you to a random location.
+    <br>
+    There are many ways to navigate to it:
+
+    <pre>
+      nav.bodyChildren().deep().id("randomLink").activate();
+
+      // Same as above, but the search for id "randomLink" starts at the page level
+      nav.page().deep().id("randomLink").activate();
+
+      // Gets the first element whose id matches starts with "random" and attempts to activate it.
+      // Note that if we had, say, a BR tag earlier in the page that had an id of "randomBreak",
+      // the navigation would attempt to activate it and throw an exception.
+      nav.page().deep().pattern().id("random.*").activate();
+
+      // Search for the anchor by href.  Here you assume that the href will always be "goRandom.html".
+      nav.page().deep().href("goRandom.html").activate();
+
+      // Do a step-by-step navigation down the dom.  This assumes a lot about the page layout,
+      // and makes for a very brittle navigation.
+      nav.bodyChildren().div().id("section1").children().div().id("subsectionA").children().a().activate();
+
+      // Do a deep search for an anchor that contains the exact text "Click here to go a random location"
+      nav.page().deep().a().text("Click here to go a random location").activate();
+
+      // Do a deep search for an anchor whose text contains "random" at any point.
+      nav.page().deep().a().pattern().text(".*random.*").activate();
+    </pre>
+
+    <h2>Further Examples</h2>
+
+    There are many more things you can do with the html navigations, such as fill out and submit forms,
+    get attributes and text representations, and check if a particular navigation chain is resolvable.
+    <br>
+    See the unit tests in the source distribution as they contain tests for each of the navigations.
+
+    <h2>License and Copyright</h2>
+    Copyright 2005 Karl Stenerud
+    <br>
+    Navigation is licensed under <a href="http://www.apache.org/licenses/LICENSE-2.0.html">the Apache License, version 2.0</a>
+
+    <h2>Downloads</h2>
+    <a href="https://sourceforge.net/project/showfiles.php?group_id=143763">Click here to go to the download page</a>
+
+    <h2>SourceForge</h2>
+    <a href="http://sourceforge.net/projects/navigation/">Click here to go to the sourceforge project page</a>
+
+    <h2>Changes</h2>
+    <h3>Release 1.2:</h3>
+    <ul>
+      <li>Updated to use Java 1.5</li>
+      <li>Updated some libraries because the older ones were causing problems sometimes.</li>
+    </ul>
+
+    <h3>Release 1.1:</h3>
+    <ul>
+      <li>Fixed a bug that caused a null pointer exception if you used certain actions on an unnavigatable chain.</li>
+      <li>Added getAttribute() action</li>
+      <li>Added parent(), before(), after(), not() navigations</li>
+    </ul>
+
+    <h3>Release 1.0:</h3>
+    <ul>
+      <li>Initial public release</li>
+    </ul>
+
+  </body>
+</html>

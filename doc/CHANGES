@@ -1,0 +1,15 @@
+CHANGES:
+
+Release 1.2:
+- Updated to use Java 1.5
+- Updated some libraries because the older ones were causing problems sometimes.
+
+Release 1.1:
+- Fixed a bug that caused a null pointer exception if you used certain actions on an unnavigatable chain.
+- Added getAttribute() action
+- Added parent(), before(), after(), not() navigations
+
+
+
+Release 1.0:
+- Initial public release
